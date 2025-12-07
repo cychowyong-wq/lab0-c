@@ -4,6 +4,19 @@
 
 #include "queue.h"
 
+static inline struct list_head *find_mid(struct list_head *head)
+{
+    if (!head || list_empty(head))
+        return NULL;
+    struct list_head *slow = head->next;
+    struct list_head *fast = head->next;
+    while (fast != head && fast->next != head) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+    return slow;
+}
+
 /* Create an empty queue */
 struct list_head *q_new()
 {
@@ -127,6 +140,15 @@ int q_size(struct list_head *head)
 bool q_delete_mid(struct list_head *head)
 {
     // https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list/
+    if (head == NULL || list_empty(head))
+        return false;
+    // find mid
+    struct list_head *mid = find_mid(head);
+    // remove mid
+    list_del(mid);
+    // release resources
+    element_t *elem = list_entry(mid, element_t, list);
+    q_release_element(elem);
     return true;
 }
 
