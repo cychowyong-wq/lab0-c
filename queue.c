@@ -175,7 +175,49 @@ void q_reverseK(struct list_head *head, int k)
 }
 
 /* Sort elements of queue in ascending/descending order */
-void q_sort(struct list_head *head, bool descend) {}
+void q_sort(struct list_head *head, bool descend)
+{
+    if (!head || list_empty(head) || list_is_singular(head))
+        return;
+
+    // separate left and right halves
+    struct list_head *mid = find_mid(head);
+    struct list_head left_head;
+    INIT_LIST_HEAD(&left_head);
+    list_cut_position(&left_head, head, mid->prev);
+
+    // sort left and right halves
+    q_sort(&left_head, descend);
+    q_sort(head, descend);
+
+    // merge two sorted halves
+    struct list_head *ptr = head;
+    struct list_head *right = head->next;
+    struct list_head *left = left_head.next;
+    while (right != head && left != &left_head) {
+        const element_t *elem_right = list_entry(right, element_t, list);
+        const element_t *elem_left = list_entry(left, element_t, list);
+        if ((strcmp(elem_right->value, elem_left->value) < 0) ^ descend) {
+            ptr->next = right;
+            right->prev = ptr;
+            right = right->next;
+        } else {
+            ptr->next = left;
+            left->prev = ptr;
+            left = left->next;
+        }
+        ptr = ptr->next;
+    }
+    if (right == head) {
+        ptr->next = left;
+        left->prev = ptr;
+        left_head.prev->next = head;
+        head->prev = left_head.prev;
+    } else {
+        ptr->next = right;
+        right->prev = ptr;
+    }
+}
 
 /* Remove every node which has a node with a strictly less value anywhere to
  * the right side of it */
