@@ -17,6 +17,40 @@ static inline struct list_head *find_mid(struct list_head *head)
     return slow;
 }
 
+static inline void merge_lists(struct list_head *l1,
+                               struct list_head *l2,
+                               bool descend)
+{
+    struct list_head *ptr = l1;
+    struct list_head *right = l1->next;
+    struct list_head *left = l2->next;
+    while (right != l1 && left != l2) {
+        const element_t *elem_right = list_entry(right, element_t, list);
+        const element_t *elem_left = list_entry(left, element_t, list);
+        if ((strcmp(elem_right->value, elem_left->value) < 0) ^ descend) {
+            ptr->next = right;
+            right->prev = ptr;
+            right = right->next;
+        } else {
+            ptr->next = left;
+            left->prev = ptr;
+            left = left->next;
+        }
+        ptr = ptr->next;
+    }
+    if (right == l1) {
+        ptr->next = left;
+        left->prev = ptr;
+        l2->prev->next = l1;
+        l1->prev = l2->prev;
+    } else {
+        ptr->next = right;
+        right->prev = ptr;
+    }
+    l2->next = l2;
+    l2->prev = l2;
+}
+
 /* Create an empty queue */
 struct list_head *q_new()
 {
@@ -251,32 +285,7 @@ void q_sort(struct list_head *head, bool descend)
     q_sort(head, descend);
 
     // merge two sorted halves
-    struct list_head *ptr = head;
-    struct list_head *right = head->next;
-    struct list_head *left = left_head.next;
-    while (right != head && left != &left_head) {
-        const element_t *elem_right = list_entry(right, element_t, list);
-        const element_t *elem_left = list_entry(left, element_t, list);
-        if ((strcmp(elem_right->value, elem_left->value) < 0) ^ descend) {
-            ptr->next = right;
-            right->prev = ptr;
-            right = right->next;
-        } else {
-            ptr->next = left;
-            left->prev = ptr;
-            left = left->next;
-        }
-        ptr = ptr->next;
-    }
-    if (right == head) {
-        ptr->next = left;
-        left->prev = ptr;
-        left_head.prev->next = head;
-        head->prev = left_head.prev;
-    } else {
-        ptr->next = right;
-        right->prev = ptr;
-    }
+    merge_lists(head, &left_head, descend);
 }
 
 /* Remove every node which has a node with a strictly less value anywhere to
@@ -300,5 +309,32 @@ int q_descend(struct list_head *head)
 int q_merge(struct list_head *head, bool descend)
 {
     // https://leetcode.com/problems/merge-k-sorted-lists/
-    return 0;
+    if (!head || list_empty(head))
+        return 0;
+    if (list_is_singular(head)) {
+        return q_size(list_entry(head->next, queue_contex_t, chain)->q);
+    }
+
+    // separate left and right halves
+    struct list_head *mid = find_mid(head);
+    struct list_head left_head;
+    INIT_LIST_HEAD(&left_head);
+    list_cut_position(&left_head, head, mid->prev);
+
+    // sort left and right halves
+    int left_sz = q_merge(&left_head, descend);
+    int right_sz = q_merge(head, descend);
+
+    // merge two sorted halves
+    queue_contex_t *q1 = list_entry(head->next, queue_contex_t, chain);
+    queue_contex_t *q2 = list_entry(left_head.next, queue_contex_t, chain);
+    merge_lists(q1->q, q2->q, descend);
+
+    // update size
+    q1->size = left_sz + right_sz;
+    q2->size = 0;
+
+    // merge chain nodes
+    list_splice_tail(&left_head, head);
+    return left_sz + right_sz;
 }
