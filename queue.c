@@ -197,20 +197,23 @@ bool q_delete_dup(struct list_head *head)
 
     struct list_head *prev = NULL;
     struct list_head *curr = head->next;
-    while (curr != head || curr->next != head) {
+    while (!(curr == head || curr->next == head)) {
         struct list_head *next = curr->next;
-        const element_t *curr_elem = list_entry(curr, element_t, list);
+        element_t *curr_elem = list_entry(curr, element_t, list);
         element_t *next_elem = list_entry(next, element_t, list);
         if (strcmp(curr_elem->value, next_elem->value) == 0) {
             while (next != head &&
                    strcmp(curr_elem->value, next_elem->value) == 0) {
                 struct list_head *tmp = next->next;
-                next = tmp;
+                list_del(next);
                 q_release_element(next_elem);
-                next_elem = list_entry(next, element_t, list);
+                next = tmp;
             }
+            list_del(curr);
+            q_release_element(curr_elem);
             if (prev) {
                 prev->next = next;
+                next->prev = prev;
                 curr = next;
             } else {
                 if (next) {
