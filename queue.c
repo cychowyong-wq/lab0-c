@@ -208,6 +208,8 @@ bool q_delete_dup(struct list_head *head)
                 list_del(next);
                 q_release_element(next_elem);
                 next = tmp;
+                if (next != head)
+                    next_elem = list_entry(next, element_t, list);
             }
             list_del(curr);
             q_release_element(curr_elem);
